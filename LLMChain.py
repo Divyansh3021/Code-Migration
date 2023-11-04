@@ -2,13 +2,15 @@ from langchain.prompts import PromptTemplate
 from langchain.chains import LLMChain, SequentialChain
 from langchain.llms import HuggingFaceHub
 from getpass import getpass
- 
-HUGGINGFACEHUB_API_TOKEN = ""
- 
 import os
-os.environ["HUGGINGFACEHUB_API_TOKEN"] = HUGGINGFACEHUB_API_TOKEN
+from dotenv import load_dotenv
+
+load_dotenv()
+
+import os
+os.environ["HUGGINGFACEHUB_API_TOKEN"] = os.getenv("HUGGINGFACEHUB_API_TOKEN")
  
-repo_id = "akreal/tiny-random-xlnet"
+repo_id = "HuggingFaceH4/zephyr-7b-alpha"
  
 llm = HuggingFaceHub(repo_id=repo_id, model_kwargs={"temperature":0.4, "max_length":64})
 
@@ -17,14 +19,14 @@ source_language = "python"
 target_language = "c++"
 
 source_code = """
-print("Hello, world!")
+for i in range(12):
+    print(i)
 """
 
 # Define the PromptTemplates for each step in the migration process
 
 parsing_template = """
-convert this code from {source_language} to {target_language}
-code: 
+analyse this {source_language} code: 
 {source_code}
 """
 
@@ -40,7 +42,7 @@ Generated code:
 """
 
 parsing_prompt_template = PromptTemplate(
-    input_variables=["source_language", "target_language","source_code"], template=parsing_template
+    input_variables=["source_language","source_code"], template=parsing_template
 )
 parsing_chain = LLMChain(
     llm=llm, prompt=parsing_prompt_template, output_key="parsed_info"
@@ -60,12 +62,12 @@ generation_chain = LLMChain(
 # )
 
 overall_chain = SequentialChain(
-    chains = [parsing_chain],
+    chains = [parsing_chain, generation_chain],
     input_variables = ["source_language", "target_language", "source_code"],
-    output_variables = ["parsed_info"]
+    output_variables = ["generated_code"]
 )
 
 
 target_code = overall_chain({"source_language":source_language, "target_language": target_language, "source_code": source_code})
 
-print(target_code['parsed_info'])
+print(target_code['generated_code'])
